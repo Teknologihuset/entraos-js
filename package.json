@@ -1,0 +1,19 @@
+{
+  "name": "entraos.js",
+  "version": "1.0.0",
+  "description": "JavaScript client to communicate EntraOS rest endpoints",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Teknologihuset/entraos-js.git"
+  },
+  "author": "DervisM",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Teknologihuset/entraos-js/issues"
+  },
+  "homepage": "https://github.com/Teknologihuset/entraos-js#readme"
+}
