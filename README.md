@@ -1,3 +1,3 @@
 # EntraOs.js
 
-JavaScript client to fetch data from EntraOS
+JavaScript client to fetch data from EntraOS.

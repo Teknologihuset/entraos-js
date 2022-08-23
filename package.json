@@ -1,19 +1,66 @@
 {
   "name": "entraos.js",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "JavaScript client to communicate EntraOS rest endpoints",
-  "main": "main.js",
+  "main": "dist/main.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint",
+    "lint-fix": "eslint --fix",
+    "prepare": "husky install",
+    "start": "node dist/entraos.js",
+    "watch": "concurrently \"npm run build --watch\" \"nodemon -q dist/entraos.js\""
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Teknologihuset/entraos-js.git"
   },
-  "author": "DervisM",
+  "author": {
+    "name": "Dervis Mansuroglu",
+    "url": "https://github.com/dervism"
+  },
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/Teknologihuset/entraos-js/issues"
   },
-  "homepage": "https://github.com/Teknologihuset/entraos-js#readme"
+  "homepage": "https://github.com/Teknologihuset/entraos-js#readme",
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "entraos-js": "dist/main.js"
+  },
+  "devDependencies": {
+    "@types/body-parser": "^1.19.2",
+    "@types/cookie-parser": "^1.4.3",
+    "@types/express": "^4.17.13",
+    "@types/node": "^18.7.5",
+    "@typescript-eslint/eslint-plugin": "^5.33.0",
+    "@typescript-eslint/parser": "^5.33.0",
+    "concurrently": "^7.3.0",
+    "eslint": "^8.22.0",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-n": "^15.2.4",
+    "eslint-plugin-prettier": "^4.2.1",
+    "eslint-plugin-promise": "^6.0.0",
+    "husky": "^8.0.0",
+    "nodemon": "^2.0.19",
+    "prettier": "^2.7.1",
+    "typescript": "^4.7.4",
+    "vite": "^3.0.7"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.0",
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.0.1",
+    "express": "^4.18.1",
+    "fp-ts": "^2.12.2",
+    "moment": "^2.29.4",
+    "openid-client": "^5.1.8",
+    "ts-pattern": "^4.0.5"
+  }
 }
