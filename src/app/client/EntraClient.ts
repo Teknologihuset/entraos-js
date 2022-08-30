@@ -1,6 +1,8 @@
 import {Either, isLeft, left, right} from "fp-ts/Either";
 import {HttpError} from "./Errors";
 
+import {Client, generators, Issuer} from 'openid-client';
+
 type ConfigResponse = {
     issuer: string;
     authorization_endpoint: string;
@@ -55,7 +57,7 @@ export default {
         if (isLeft(responseValue))
             throw new Error("Couldn't fetch AuthorizationEndpoint", responseValue.left);
 
-        return responseValue.right.authorization_endpoint
+        return responseValue.right.token_endpoint
     },
 
     async fetchAuthenticationToken(tokenEndpoint: string): Promise<Either<Error, TokenResponse>> {
@@ -66,16 +68,31 @@ export default {
         const clientSecret = process.env.TEKNOLOGIHUSET_CLIENT_SECRET as string;
         if (!clientSecret) throw new Error("Config endpoint env variable not set.");
 
+        const clientB64 = process.env.TEKNOLOGIHUSET_B64 as string;
+        if (!clientB64) throw new Error("Config b64 env variable not set.");
+
+        const code_verifier = generators.codeVerifier();
+        const code_challenge = generators.codeChallenge(code_verifier);
+        const nonce = generators.nonce();
+        const state = generators.state(32);
+
         const params = new URLSearchParams();
         params.append("grant_type", "client_credentials");
-        params.append("client_id", clientId);
-        params.append("client_secret", clientSecret);
+        //params.append("client_id", clientId);
+        //params.append("client_secret", clientSecret);
+        //params.append("audience", "devtest");
+        //params.append("redirect_uri", "http://127.0.0.1:3000/login/callback");
+        //params.append("code", "blablabla");
+        //params.append("code_challenge", code_challenge);
+        //params.append("code_challenge_method", "sha256");
+        params.append("scope", "openid email profile offline_access");
 
         const response = await fetch(tokenEndpoint, {
             method: 'POST',
             body: params,
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'authorization': `Basic ${clientB64}`,
             }
         });
 
@@ -85,6 +102,28 @@ export default {
         if (isLeft(responseValue)) throw responseValue.left;
 
         return responseValue;
+    },
+
+    async getOidcClient(): Promise<Client> {
+        const configEndpoint = process.env.ENTRAOS_CONFIG as string;
+        if (!configEndpoint) throw new Error("Configuration env variable not set.");
+
+        const clientId = process.env.TEKNOLOGIHUSET_CLIENT_ID as string;
+        if (!clientId) throw new Error("Config endpoint env variable not set.");
+
+        const clientSecret = process.env.TEKNOLOGIHUSET_CLIENT_SECRET as string;
+        if (!clientSecret) throw new Error("Config endpoint env variable not set.");
+
+        const issuer = await Issuer.discover(configEndpoint);
+        console.log('Discovered issuer %s %O', issuer.issuer, issuer.metadata);
+
+        return new issuer.Client({
+            client_id: clientId,
+            client_secret: clientSecret,
+            redirect_uris: ["http://localhost:3000/login/callback"],
+            post_logout_redirect_uris: [ 'http://localhost:3000/logout/callback' ],
+            token_endpoint_auth_method: 'client_secret_post'
+        });
     }
 
 }

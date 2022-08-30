@@ -1,18 +1,23 @@
 import * as Booking from "./app/booking/Booking";
-import Client from "./app/client/Client";
-import Server from "./app/server/Server"
+import EntraClient from "./app/client/EntraClient";
+import Server from "./app/server/Server";
 
-export {Booking, Client, Server};
+import dotenv from "dotenv"
+dotenv.config()
 
-(async () => {
-    const endpoint = await Client.fetchAuthorizationEndpoint();
+export {Booking, EntraClient};
+
+async function test() {
+    const endpoint = await EntraClient.fetchAuthorizationEndpoint();
     console.log("endpoint", endpoint)
 
-    const data = await Client.fetchAuthenticationToken(endpoint)
+    const data = await EntraClient.fetchAuthenticationToken(endpoint)
 
     if (data) {
         console.log("Received token data", data);
     }
-})()
+}
+
+//test();
 
 Server.startServer();

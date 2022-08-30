@@ -5,14 +5,14 @@
   "source": "./src/main.ts",
   "main": "./dist/entraos.js",
   "types": "./dist/types.d.ts",
-  "module": "dist/entraos.module.js",
+  "module": "./dist/entraos.module.js",
   "scripts": {
     "build": "parcel build",
     "watch": "parcel watch",
     "lint": "eslint",
     "lint-fix": "eslint --fix",
     "prepare": "husky install",
-    "start": "node dist/main.js"
+    "start": "NODE_ENV=development npm run build && node ./dist/entraos.js --experimental-fetch"
   },
   "repository": {
     "type": "git",
@@ -37,9 +37,14 @@
     "@parcel/packager-ts": "^2.7.0",
     "@parcel/transformer-typescript-types": "^2.7.0",
     "@types/body-parser": "^1.19.2",
+    "@types/connect-ensure-login": "^0.1.7",
     "@types/cookie-parser": "^1.4.3",
     "@types/express": "^4.17.13",
+    "@types/express-session": "^1.17.5",
+    "@types/http-errors": "^1.8.2",
+    "@types/morgan": "^1.9.3",
     "@types/node": "^18.7.5",
+    "@types/passport": "^1.0.10",
     "@typescript-eslint/eslint-plugin": "^5.33.0",
     "@typescript-eslint/parser": "^5.33.0",
     "eslint": "^8.22.0",
@@ -56,12 +61,19 @@
   },
   "dependencies": {
     "body-parser": "^1.20.0",
+    "connect-ensure-login": "^0.1.1",
     "cookie-parser": "^1.4.6",
     "dotenv": "^16.0.1",
+    "ejs": "^3.1.8",
     "express": "^4.18.1",
+    "express-session": "^1.17.3",
     "fp-ts": "^2.12.2",
+    "helmet": "^6.0.0",
+    "http-errors": "^2.0.0",
     "moment": "^2.29.4",
+    "morgan": "^1.10.0",
     "openid-client": "^5.1.8",
+    "passport": "^0.6.0",
     "ts-pattern": "^4.0.5"
   }
 }
