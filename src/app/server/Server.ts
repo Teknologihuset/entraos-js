@@ -4,9 +4,8 @@ import cookieParser from "cookie-parser";
 import passport from "passport";
 import helmet from "helmet";
 import session from "express-session";
-import {Strategy} from "openid-client";
+import {Strategy, TokenSet} from "openid-client";
 import EntraClient from "../client/EntraClient";
-import ensure from 'connect-ensure-login';
 import path from "path";
 import logger from "morgan";
 import createError from "http-errors";
@@ -30,21 +29,32 @@ app.use('/', indexRouter);
 
 EntraClient.getOidcClient().then(client => {
 
-    app.use(session({
-        secret: 'secret',
-        resave: false,
-        saveUninitialized: true,})
+    let cookie = {};
+    if (app.get('env') === 'production') {
+        cookie = { secure: true };
+    }
+
+    app.use(
+        session({
+            secret: 'secret',
+            resave: false,
+            saveUninitialized: false,
+            cookie
+        })
     );
-    app.use(helmet());
-    app.use(passport.initialize());
-    app.use(passport.session());
 
     passport.use(
         'oidc',
         new Strategy({ client }, (req, tokenSet, userinfo, done) => {
+            console.log("TOKENS: ", tokenSet);
+            console.log("USERINFO: ", userinfo);
             return done(null, tokenSet.claims());
         })
     );
+
+    app.use(helmet());
+    app.use(passport.initialize());
+    app.use(passport.session());
 
     passport.serializeUser(function(user, cb) {
         cb(null, user);
@@ -55,18 +65,58 @@ EntraClient.getOidcClient().then(client => {
         cb(null, obj);
     });
 
-    app.get('/login', (req, res, next) => {
-        passport.authenticate('oidc',{scope:"openid"})(req, res, next);
-    });
-
-    app.get('/login/callback', (req, res, next) => {
-        passport.authenticate('oidc', {
-            successRedirect: '/users',
-            failureRedirect: '/'
-        })(req, res, next);
+    app.use((req, res, next) => {
+        res.locals.isAuthenticated = req.isAuthenticated();
+        next();
     });
 
     app.use('/users', usersRouter);
+
+    app.get('/login', (req, res, next) => {
+        passport.authenticate(
+            "oidc",
+            {scope: "openid email profile address phone offline_access"})
+        (req, res, next);
+    });
+
+    app.get('/login/callback000', (req, res, next) => {
+        try {
+            passport.authenticate(
+                'oidc',
+                {successRedirect: '/users', failureRedirect: '/'})
+            (req, res, next);
+        } catch (err) {
+            next(err);
+            handleErrorLogging(req, err);
+        }
+    });
+
+    app.get('/login/callback000', (req, res, next) => {
+        try {
+            passport.authenticate(
+                "oidc",
+                (err, user, info) => {
+                    if (err) {
+                        return next(err);
+                    }
+                    if (!user) {
+                        console.error("ERROR: No user object found.")
+                        return res.redirect("/login");
+                    }
+                    req.logIn(user, (err) => {
+                        if (err) {
+                            return next(err);
+                        }
+                        res.redirect("/users" || "/");
+                    });
+                }
+            );
+        } catch (err) {
+            next(err);
+            handleErrorLogging(req, err);
+        }
+    });
+
 
     app.get('/logout', (req, res) => {
         res.redirect(client.endSessionUrl());
@@ -74,7 +124,7 @@ EntraClient.getOidcClient().then(client => {
 
     app.get('/logout/callback', (req, res) => {
         req.logout(err => {
-            console.error(err);
+            handleErrorLogging(req, err);
         });
         res.redirect('/');
     });
@@ -87,7 +137,13 @@ EntraClient.getOidcClient().then(client => {
     // error handler
     const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
         res.locals.message = err.message;
-        res.locals.error = req.app.get('env') === 'development' ? err : {};
+        res.locals.error = err; //req.app.get('env') === 'development' ? err : {};
+
+        handleErrorLogging(req, err);
+
+        if (res.headersSent) {
+            return next(err)
+        }
 
         // render the error page
         res.status(err.status || 500);
@@ -97,6 +153,12 @@ EntraClient.getOidcClient().then(client => {
     app.use(errorHandler);
 
 })
+
+function handleErrorLogging(req: Request, err?: any) {
+    if (req.app.get('env') === 'development' || process.env.NODE_ENV === 'development') {
+        console.error("ERROR: ", err);
+    }
+}
 
 export default {
     startServer: () => app.listen(port, () => {
