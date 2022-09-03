@@ -82,7 +82,7 @@ EntraClient.getOidcClient().then(client => {
             code_challenge,
             code_challenge_method: 'S256',
             state,
-            //nonce
+            nonce
         });
 
         res.redirect(authorizationUrl)
@@ -112,16 +112,14 @@ EntraClient.getOidcClient().then(client => {
 
         if (params.code) {
             const grant_type = "authorization_code";
-            const parameters: Record<string, string> = {
-                client_id: client.metadata.client_id,
-                grant_type,
-                code: params.code,
-                code_verifier,
-                redirect_uri: "http://localhost:3000/login/callback",
-            };
 
-            console.log("parameters:");
-            console.log(parameters);
+            const parameters = new URLSearchParams();
+            parameters.append("grant_type", "authorization_code");
+            parameters.append("client_id", client.metadata.client_id);
+            parameters.append("client_secret", client.metadata.client_secret || "");
+            parameters.append("redirect_uri", "http://127.0.0.1:3000/login/callback");
+            parameters.append("code", params.code);
+            parameters.append("code_verifier", code_verifier);
 
             const token_endpoint = client.issuer.metadata.token_endpoint || "";
             console.log("token_endpoint:", token_endpoint)
@@ -129,7 +127,10 @@ EntraClient.getOidcClient().then(client => {
 
             const tokenSet = await fetch(token_endpoint, {
                 method: "post",
-                body: new URLSearchParams(parameters),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: parameters,
             });
 
             if (!tokenSet.ok) {
