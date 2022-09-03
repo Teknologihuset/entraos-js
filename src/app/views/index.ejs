@@ -1,11 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>EntraOS Client</title>
+    <title><%= title %></title>
     <link rel='stylesheet' href='/stylesheets/style.css' />
   </head>
   <body>
-    <h1>EntraOS Client</h1>
+    <h1>Welcome to <%= title %></h1>
+
+    <% if(locals.errorMsg){ %>
+      <p><%= locals.errorMsg %></p>
+    <% } else { %>
+      <p>Log in to continue.</p>
+    <% } %>
 
     <form action="/login">
       <input type="submit" value="Login">

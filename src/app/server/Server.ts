@@ -1,5 +1,4 @@
 import express, { Express, Request, Response } from "express";
-import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
 import passport from "passport";
 import helmet from "helmet";
@@ -60,8 +59,7 @@ EntraClient.getOidcClient().then(client => {
         cb(null, user);
     });
 
-    passport.deserializeUser(function(obj, cb) {
-        // @ts-ignore
+    passport.deserializeUser(function(obj, cb?: any) {
         cb(null, obj);
     });
 
@@ -70,53 +68,45 @@ EntraClient.getOidcClient().then(client => {
         next();
     });
 
-    app.use('/users', usersRouter);
+    app.use('/user', usersRouter);
 
     app.get('/login', (req, res, next) => {
         passport.authenticate(
             "oidc",
-            {scope: "openid email profile address phone offline_access"})
+            {scope: "openid email profile"})
         (req, res, next);
     });
 
-    app.get('/login/callback000', (req, res, next) => {
-        try {
-            passport.authenticate(
-                'oidc',
-                {successRedirect: '/users', failureRedirect: '/'})
-            (req, res, next);
-        } catch (err) {
-            next(err);
-            handleErrorLogging(req, err);
-        }
+    app.get('/login/callback0', (req, res, next) => {
+        passport.authenticate(
+            'oidc',
+            {successRedirect: '/user', failureRedirect: '/'})
+        (req, res, next);
     });
 
-    app.get('/login/callback000', (req, res, next) => {
-        try {
-            passport.authenticate(
-                "oidc",
-                (err, user, info) => {
-                    if (err) {
-                        return next(err);
-                    }
-                    if (!user) {
-                        console.error("ERROR: No user object found.")
-                        return res.redirect("/login");
-                    }
-                    req.logIn(user, (err) => {
-                        if (err) {
-                            return next(err);
-                        }
-                        res.redirect("/users" || "/");
-                    });
+    app.get(
+        "/login/callback",
+        (req, res, next) => {
+        passport.authenticate("oidc", (err, user, info) => {
+            if (err) {
+                return next(err);
+            }
+            if (info) {
+                console.log("INFO:", info);
+            }
+            if (!user) {
+                console.error("ERROR: No user object error.")
+                return res.render("error", {error: err ? err : getDefaultErr("User object is null.")});
+            }
+            req.logIn(user, (err) => {
+                if (err) {
+                    console.error("ERROR: req.logIn");
+                    return next(err);
                 }
-            );
-        } catch (err) {
-            next(err);
-            handleErrorLogging(req, err);
-        }
+                res.redirect("/user");
+            });
+        })(req, res, next);
     });
-
 
     app.get('/logout', (req, res) => {
         res.redirect(client.endSessionUrl());
@@ -136,8 +126,10 @@ EntraClient.getOidcClient().then(client => {
 
     // error handler
     const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
-        res.locals.message = err.message;
-        res.locals.error = err; //req.app.get('env') === 'development' ? err : {};
+        console.log("Error handler called.");
+        res.locals.error =  err ? err : { // req.app.get('env') === 'development' &&
+            error: getDefaultErr()
+        };
 
         handleErrorLogging(req, err);
 
@@ -158,6 +150,14 @@ function handleErrorLogging(req: Request, err?: any) {
     if (req.app.get('env') === 'development' || process.env.NODE_ENV === 'development') {
         console.error("ERROR: ", err);
     }
+}
+
+function getDefaultErr(errorStr?: string) {
+    return {
+        message: errorStr ? errorStr : "Internal server error.",
+        status: 500,
+        stack: []
+    };
 }
 
 export default {

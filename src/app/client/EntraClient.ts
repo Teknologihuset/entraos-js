@@ -52,7 +52,7 @@ export default {
         return this.handleJsonResponse<ConfigResponse>(response, "Couldn't fetch configuration.");
     },
 
-    async fetchAuthorizationEndpoint(): Promise<string> {
+    async fetchTokenEndpoint(): Promise<string> {
         const responseValue: Either<Error, ConfigResponse> = await this.fetchConfiguration();
         if (isLeft(responseValue))
             throw new Error("Couldn't fetch AuthorizationEndpoint", responseValue.left);
@@ -60,7 +60,7 @@ export default {
         return responseValue.right.token_endpoint
     },
 
-    async fetchAuthenticationToken(tokenEndpoint: string): Promise<Either<Error, TokenResponse>> {
+    async fetchAccessToken(tokenEndpoint: string, code: string): Promise<Either<Error, TokenResponse>> {
 
         const clientId = process.env.TEKNOLOGIHUSET_CLIENT_ID as string;
         if (!clientId) throw new Error("Config endpoint env variable not set.");
@@ -68,31 +68,24 @@ export default {
         const clientSecret = process.env.TEKNOLOGIHUSET_CLIENT_SECRET as string;
         if (!clientSecret) throw new Error("Config endpoint env variable not set.");
 
-        const clientB64 = process.env.TEKNOLOGIHUSET_B64 as string;
-        if (!clientB64) throw new Error("Config b64 env variable not set.");
-
         const code_verifier = generators.codeVerifier();
         const code_challenge = generators.codeChallenge(code_verifier);
-        const nonce = generators.nonce();
-        const state = generators.state(32);
 
         const params = new URLSearchParams();
-        params.append("grant_type", "client_credentials");
-        //params.append("client_id", clientId);
-        //params.append("client_secret", clientSecret);
-        //params.append("audience", "devtest");
-        //params.append("redirect_uri", "http://127.0.0.1:3000/login/callback");
-        //params.append("code", "blablabla");
-        //params.append("code_challenge", code_challenge);
-        //params.append("code_challenge_method", "sha256");
+        params.append("grant_type", "authorization_code");
+        params.append("client_id", clientId);
+        params.append("client_secret", clientSecret);
+        params.append("redirect_uri", "http://127.0.0.1:3000/login/callback");
+        params.append("code", code);
+        params.append("code_challenge", code_challenge);
+        params.append("code_challenge_method", "sha256");
         params.append("scope", "openid email profile offline_access");
 
         const response = await fetch(tokenEndpoint, {
             method: 'POST',
             body: params,
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'authorization': `Basic ${clientB64}`,
+                'Content-Type': 'application/x-www-form-urlencoded'
             }
         });
 
@@ -122,7 +115,13 @@ export default {
             client_secret: clientSecret,
             redirect_uris: ["http://localhost:3000/login/callback"],
             post_logout_redirect_uris: [ 'http://localhost:3000/logout/callback' ],
-            token_endpoint_auth_method: 'client_secret_post'
+            token_endpoint_auth_method: 'client_secret_post',
+            token_endpoint_auth_signing_alg: "RS256",
+            response_types: ["code"],
+            grant_type: "authorization_code",
+            scope: "openid email profile",
+            response_mode: "fragment",
+            default_max_age: 60000
         });
     }
 
