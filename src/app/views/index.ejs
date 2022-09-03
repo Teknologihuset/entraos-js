@@ -9,12 +9,21 @@
 
     <% if(locals.errorMsg){ %>
       <p><%= locals.errorMsg %></p>
+      <p>Log in to continue.</p>
     <% } else { %>
       <p>Log in to continue.</p>
     <% } %>
 
     <form action="/login">
-      <input type="submit" value="Login">
+      <input type="submit" value="Login user">
+    </form>
+
+    <form action="/client/login">
+      <input type="submit" value="Login client">
+    </form>
+
+    <form action="/logout">
+      <input type="submit" value="Logout">
     </form>
 
   </body>

@@ -18,10 +18,10 @@ export type CheckBookingResponse = {
 
 export const Booking = {
 
-    checkBooking(query: CheckBookingRequest) {
+    checkBooking(query: CheckBookingRequest, token: string) {
         return match(query.datetime)
-            .with(P.instanceOf(Date), date => check(date))
-            .with(P.when(isBookingTime), date => check(createBookingTime(date)))
+            .with(P.instanceOf(Date), date => check(date, token))
+            .with(P.when(isBookingTime), date => check(createBookingTime(date), token))
     }
 
 }
@@ -37,11 +37,12 @@ const isBookingTime = isMatching({
 const createBookingTime = (bt: BookingTime): Date =>
     new Date(bt.year, bt.month, bt.day, bt.hour, bt.minute);
 
-async function check(date: Date) {
+async function check(date: Date, token: string) {
     return await fetch("", {
-        method: 'POST',
+        method: 'post',
         headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(date),
     })

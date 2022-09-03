@@ -2,7 +2,7 @@ import express, { Express, Request, Response } from "express";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import session from "express-session";
-import {Strategy, TokenSet, generators} from "openid-client";
+import {TokenSet, generators} from "openid-client";
 import EntraClient from "../client/EntraClient";
 import path from "path";
 import logger from "morgan";
@@ -38,7 +38,7 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "..", "..", "..", "public")));
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
+app.use(cookieParser(EntraClient.randomString(32)));
 
 app.use('/', indexRouter);
 
@@ -88,6 +88,47 @@ EntraClient.getOidcClient().then(client => {
         res.redirect(authorizationUrl)
     });
 
+    /**
+     * client_credentials flow doesn't involve user interaction
+     */
+    app.get('/client/login', async (req, res) => {
+
+        const parameters = new URLSearchParams();
+        parameters.append("grant_type", "client_credentials");
+
+        const token_endpoint = client.issuer.metadata.token_endpoint || "";
+        console.log("token_endpoint:", token_endpoint)
+        console.log("parameters:", parameters)
+
+        const auth64 = Buffer.from(
+            client.metadata.client_id + ":" + client.metadata.client_secret)
+            .toString('base64')
+
+        const tokenSet = await fetch(token_endpoint, {
+            method: "post",
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': `Basic ${auth64}`
+            },
+            body: parameters
+        });
+
+        if (!tokenSet.ok) {
+            const error = new Error(`Status ${tokenSet.status} ${tokenSet.statusText}`)
+            console.error("ERROR: Couldn't fetch token:", error);
+            console.log(await tokenSet.json()); // prints out error info
+            res.redirect("/");
+        } else {
+            const tokens = await tokenSet.json();
+            console.log('received and validated tokens %j', tokens);
+            res.cookie("access_token", tokens.access_token, { signed: true });
+            res.json(tokens);
+        }
+    });
+
+    /**
+     * authorization_code flow involves user interaction (user must sign in)
+     */
     app.get('/login/callback', async (req, res, next) => {
         console.log("callback called")
 
@@ -105,14 +146,17 @@ EntraClient.getOidcClient().then(client => {
             res.redirect("/");
         }
 
+        if (!nonce || nonce !== params.nonce) {
+            console.error("ERROR: Invalid nonce.");
+            res.redirect("/");
+        }
+
         if (params.error || params.error_description) {
             console.error("ERROR: params.error: ", params.error_description || params.error);
             res.redirect("/");
         }
 
         if (params.code) {
-            const grant_type = "authorization_code";
-
             const parameters = new URLSearchParams();
             parameters.append("grant_type", "authorization_code");
             parameters.append("client_id", client.metadata.client_id);
@@ -121,6 +165,10 @@ EntraClient.getOidcClient().then(client => {
             parameters.append("code", params.code);
             parameters.append("code_verifier", code_verifier);
 
+            const auth64 = Buffer.from(
+                client.metadata.client_id + ":" + client.metadata.client_secret)
+                .toString('base64')
+
             const token_endpoint = client.issuer.metadata.token_endpoint || "";
             console.log("token_endpoint:", token_endpoint)
             console.log("parameters:", parameters)
@@ -128,7 +176,8 @@ EntraClient.getOidcClient().then(client => {
             const tokenSet = await fetch(token_endpoint, {
                 method: "post",
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Authorization': `Basic ${auth64}`
                 },
                 body: parameters,
             });
@@ -139,11 +188,16 @@ EntraClient.getOidcClient().then(client => {
                 console.log(await tokenSet.json()); // prints out error info
                 res.redirect("/");
             } else {
-                const tokens = await tokenSet.json();
+                const tokens: TokenSet = await tokenSet.json();
                 console.log('received and validated tokens %j', tokens);
                 res.cookie("access_token", tokens.access_token, { signed: true });
+                req.session.tokenSet = tokens;
                 res.json(tokens);
             }
+        }
+
+        if (params.access_token) {
+
         }
 
     });
