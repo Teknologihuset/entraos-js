@@ -1,7 +1,7 @@
 import {Either, isLeft, left, right} from "fp-ts/Either";
 import {HttpError} from "./Errors";
 
-import {Client, generators, Issuer, TokenSet} from 'openid-client';
+import {Client, Issuer, TokenSet} from 'openid-client';
 
 export interface ClientCredentials {
     client_id: string;
@@ -45,6 +45,17 @@ export default {
         if (isLeft(responseValue)) throw responseValue.left;
 
         return responseValue;
+    },
+
+    async fetch(token:string, endpoint: string, options: RequestInit) {
+
+        const response = await fetch(endpoint, {
+            ...options,
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                ...options.headers
+            }
+        });
     },
 
     randomString(length: number): string {

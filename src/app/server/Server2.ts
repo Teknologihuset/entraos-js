@@ -11,6 +11,7 @@ import type { ErrorRequestHandler } from "express";
 
 import indexRouter from "../routes/index";
 import usersRouter from "../routes/users"
+import {Either, isLeft} from "fp-ts/Either";
 
 type User = {
     id: string;
@@ -93,37 +94,17 @@ EntraClient.getOidcClient().then(client => {
      */
     app.get('/client/login', async (req, res) => {
 
-        const parameters = new URLSearchParams();
-        parameters.append("grant_type", "client_credentials");
-
-        const token_endpoint = client.issuer.metadata.token_endpoint || "";
-        console.log("token_endpoint:", token_endpoint)
-        console.log("parameters:", parameters)
-
-        const auth64 = Buffer.from(
-            client.metadata.client_id + ":" + client.metadata.client_secret)
-            .toString('base64')
-
-        const tokenSet = await fetch(token_endpoint, {
-            method: "post",
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': `Basic ${auth64}`
-            },
-            body: parameters
+        const tokenEndpoint = client.issuer.metadata.token_endpoint || "";
+        const token: Either<Error, TokenSet> = await EntraClient.fetchOneTimeAccessToken(tokenEndpoint, {
+            client_id: client.metadata.client_id,
+            client_secret: client.metadata.client_secret || ""
         });
 
-        if (!tokenSet.ok) {
-            const error = new Error(`Status ${tokenSet.status} ${tokenSet.statusText}`)
-            console.error("ERROR: Couldn't fetch token:", error);
-            console.log(await tokenSet.json()); // prints out error info
-            res.redirect("/");
-        } else {
-            const tokens = await tokenSet.json();
-            console.log('received and validated tokens %j', tokens);
-            res.cookie("access_token", tokens.access_token, { signed: true });
-            res.json(tokens);
+        if (isLeft(token)) {
+            throw new Error("Couldn't fetch one time access token.", token.left);
         }
+
+        res.json(token.right);
     });
 
     /**
@@ -177,7 +158,7 @@ EntraClient.getOidcClient().then(client => {
                 method: "post",
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    'Authorization': `Basic ${auth64}`
+                    'Authorization': `Basic ${auth64}` // this is a required header
                 },
                 body: parameters,
             });
