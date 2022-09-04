@@ -7,24 +7,24 @@
   <body>
     <h1>Welcome to <%= title %></h1>
 
-    <% if(locals.errorMsg){ %>
+    <% if (locals.errorMsg) { %>
       <p><%= locals.errorMsg %></p>
-      <p>Log in to continue.</p>
+    <% }%>
+
+    <% if (locals.authenticated) { %>
+      <form action="/logout">
+        <input type="submit" value="Logout">
+      </form>
     <% } else { %>
       <p>Log in to continue.</p>
+      <form action="/login">
+        <input type="submit" value="Login user">
+      </form>
+
+      <form action="/client/login">
+        <input type="submit" value="Login client">
+      </form>
     <% } %>
-
-    <form action="/login">
-      <input type="submit" value="Login user">
-    </form>
-
-    <form action="/client/login">
-      <input type="submit" value="Login client">
-    </form>
-
-    <form action="/logout">
-      <input type="submit" value="Logout">
-    </form>
 
   </body>
 </html>

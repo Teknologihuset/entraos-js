@@ -2,10 +2,17 @@ import {Either, isLeft, left, right} from "fp-ts/Either";
 import {HttpError} from "./Errors";
 
 import {Client, Issuer, TokenSet} from 'openid-client';
+import {NextFunction} from "express";
 
-export interface ClientCredentials {
+export interface Credentials {
     client_id: string;
     client_secret: string;
+}
+
+export interface TokenTimePair {
+    access_token: string;
+    expires_at: Date;
+    expires_in: number;
 }
 
 export default {
@@ -21,7 +28,11 @@ export default {
         }
     },
 
-    async fetchOneTimeAccessToken(tokenEndpoint: string, credentials: ClientCredentials): Promise<Either<Error, TokenSet>> {
+    /**
+     * https://www.rfc-editor.org/rfc/rfc6749#section-3.2.1
+     * https://www.rfc-editor.org/rfc/rfc6749#section-2.3.1
+     */
+    async fetchOneTimeAccessToken(tokenEndpoint: string, credentials: Credentials): Promise<Either<Error, TokenSet>> {
 
         const parameters = new URLSearchParams();
         parameters.append("grant_type", "client_credentials");
