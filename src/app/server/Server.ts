@@ -93,7 +93,7 @@ EntraClient.getOidcClient().then(client => {
             nonce
         });
 
-        res.redirect(authorizationUrl)
+        return res.redirect(authorizationUrl)
     });
 
     /**
@@ -210,7 +210,7 @@ EntraClient.getOidcClient().then(client => {
     app.get('/logout', (req, res) => {
         res.clearCookie("access_token");
         res.redirect(client.endSessionUrl({
-            post_logout_redirect_uri: "http://localhost:3000/logout/callback"
+            post_logout_redirect_uri: "http://localhost:3000"
         }));
     });
 
