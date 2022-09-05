@@ -7,7 +7,7 @@ import EntraClient from "../client/EntraClient";
 import path from "path";
 import logger from "morgan";
 import createError from "http-errors";
-import type { ErrorRequestHandler } from "express";
+import type {ErrorRequestHandler} from "express";
 
 import indexRouter from "../routes/index";
 import usersRouter from "../routes/users"
@@ -38,7 +38,7 @@ app.set('view engine', 'ejs');
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "..", "..", "..", "public")));
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({extended: false}));
 
 let secret = EntraClient.randomString(32);
 app.use(cookieParser(secret));
@@ -49,7 +49,7 @@ EntraClient.getOidcClient().then(client => {
 
     let cookie = {};
     if (app.get('env') === 'production') {
-        cookie = { secure: true };
+        cookie = {secure: true};
     }
 
     app.use(
@@ -82,7 +82,7 @@ EntraClient.getOidcClient().then(client => {
             state
         }
 
-        const authorizationUrl =  client.authorizationUrl({
+        const authorizationUrl = client.authorizationUrl({
             response_type: "code",
             response_mode: "fragment",
             client_id: client.metadata.client_id,
@@ -134,10 +134,10 @@ EntraClient.getOidcClient().then(client => {
             return res.redirect("/");
         }
 
-        if (!nonce || nonce !== params.nonce) {
+        /*if (!nonce || nonce !== params.nonce) {
             console.error("ERROR: Invalid nonce.");
             return res.redirect("/");
-        }
+        }*/
 
         if (params.error || params.error_description) {
             console.error("ERROR: params.error: ", params.error_description || params.error);
@@ -181,10 +181,10 @@ EntraClient.getOidcClient().then(client => {
         } else {
             const tokens: TokenSet = await tokenSet.json();
             console.log('received and validated tokens %j', tokens);
-            res.cookie("access_token", tokens.access_token, { signed: true });
+            res.cookie("access_token", tokens.access_token, {signed: true, secure: true, sameSite: "lax"});
             req.session.tokenSet = tokens;
 
-            const user = await client.userinfo(tokens, {via: "header"});
+            const user = await client.userinfo(tokens.access_token!!, {via: "header"});
             if (user) {
                 req.session.user = user;
                 console.log("USER: ", user);
@@ -196,9 +196,10 @@ EntraClient.getOidcClient().then(client => {
 
     });
 
-    function isAuthenticated(redirectTo?: string): RequestHandler  {
+    function isAuthenticated(redirectTo?: string): RequestHandler {
         return (req: Request, res: Response, next: NextFunction) => {
-            const { access_token } = req.signedCookies;
+            console.log(req.signedCookies)
+            const {access_token} = req.signedCookies;
             if (access_token) {
                 next();
             }
@@ -218,14 +219,14 @@ EntraClient.getOidcClient().then(client => {
     });
 
     // catch 404 and forward to error handler
-    app.use(function(req, res, next) {
+    app.use(function (req, res, next) {
         next(createError(404));
     });
 
     // error handler
     const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
         console.log("Error handler called.");
-        res.locals.error =  err ? err : { // req.app.get('env') === 'development' &&
+        res.locals.error = err ? err : { // req.app.get('env') === 'development' &&
             error: getDefaultErr()
         };
 
