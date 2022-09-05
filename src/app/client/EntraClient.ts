@@ -2,7 +2,6 @@ import {Either, isLeft, left, right} from "fp-ts/Either";
 import {HttpError} from "./Errors";
 
 import {Client, Issuer, TokenSet} from 'openid-client';
-import {NextFunction} from "express";
 
 export interface Credentials {
     client_id: string;

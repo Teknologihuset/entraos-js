@@ -131,68 +131,68 @@ EntraClient.getOidcClient().then(client => {
 
         if (!state || state !== params.state) {
             console.error("ERROR: Invalid state.");
-            res.redirect("/");
+            return res.redirect("/");
         }
 
         if (!nonce || nonce !== params.nonce) {
             console.error("ERROR: Invalid nonce.");
-            res.redirect("/");
+            return res.redirect("/");
         }
 
         if (params.error || params.error_description) {
             console.error("ERROR: params.error: ", params.error_description || params.error);
-            res.redirect("/");
+            return res.redirect("/");
         }
 
-        if (params.code) {
-            const parameters = new URLSearchParams();
-            parameters.append("grant_type", "authorization_code");
-            parameters.append("client_id", client.metadata.client_id);
-            parameters.append("client_secret", client.metadata.client_secret || "");
-            parameters.append("redirect_uri", "http://127.0.0.1:3000/login/callback");
-            parameters.append("code", params.code);
-            parameters.append("code_verifier", code_verifier);
+        if (!params.code) {
+            return res.status(401).send("Error: invalid state.");
+        }
 
-            const auth64 = Buffer.from(
-                client.metadata.client_id + ":" + client.metadata.client_secret)
-                .toString('base64')
+        const parameters = new URLSearchParams();
+        parameters.append("grant_type", "authorization_code");
+        parameters.append("client_id", client.metadata.client_id);
+        parameters.append("client_secret", client.metadata.client_secret || "");
+        parameters.append("redirect_uri", "http://127.0.0.1:3000/login/callback");
+        parameters.append("code", params.code);
+        parameters.append("code_verifier", code_verifier);
 
-            const token_endpoint = client.issuer.metadata.token_endpoint || "";
-            console.log("token_endpoint:", token_endpoint)
-            console.log("parameters:", parameters)
+        const auth64 = Buffer.from(
+            client.metadata.client_id + ":" + client.metadata.client_secret)
+            .toString('base64')
 
-            const tokenSet = await fetch(token_endpoint, {
-                method: "post",
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'Authorization': `Basic ${auth64}` // this is a required header
-                },
-                body: parameters,
-            });
+        const token_endpoint = client.issuer.metadata.token_endpoint || "";
+        console.log("token_endpoint:", token_endpoint)
+        console.log("parameters:", parameters)
 
-            if (!tokenSet.ok) {
-                const error = new Error(`Status ${tokenSet.status} ${tokenSet.statusText}`)
-                console.error("ERROR: Couldn't fetch token:", error);
-                console.log(await tokenSet.json()); // prints out error info
-                res.redirect("/");
-            } else {
-                const tokens: TokenSet = await tokenSet.json();
-                console.log('received and validated tokens %j', tokens);
-                res.cookie("access_token", tokens.access_token, { signed: true });
-                req.session.tokenSet = tokens;
+        const tokenSet = await fetch(token_endpoint, {
+            method: "post",
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': `Basic ${auth64}` // this is a required header
+            },
+            body: parameters,
+        });
 
-                const user = await client.userinfo(tokens, {via: "header"});
-                if (user) {
-                    req.session.user = user;
-                    console.log("USER: ", user);
-                }
+        if (!tokenSet.ok) {
+            const error = new Error(`Status ${tokenSet.status} ${tokenSet.statusText}`)
+            console.error("ERROR: Couldn't fetch token:", error);
+            console.log(await tokenSet.json()); // prints out error info
+            return res.redirect("/");
+        } else {
+            const tokens: TokenSet = await tokenSet.json();
+            console.log('received and validated tokens %j', tokens);
+            res.cookie("access_token", tokens.access_token, { signed: true });
+            req.session.tokenSet = tokens;
 
-                res.json(user);
+            const user = await client.userinfo(tokens, {via: "header"});
+            if (user) {
+                req.session.user = user;
+                console.log("USER: ", user);
             }
+
+            return res.json(user);
         }
-        else if (params.access_token) {
-            res.redirect("/");
-        }
+
 
     });
 
