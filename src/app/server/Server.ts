@@ -181,7 +181,7 @@ EntraClient.getOidcClient().then(client => {
         } else {
             const tokens: TokenSet = await tokenSet.json();
             console.log('received and validated tokens %j', tokens);
-            res.cookie("access_token", tokens.access_token, {signed: true, secure: true, sameSite: "lax"});
+            res.cookie("access_token", tokens.access_token, {signed: true, secure: true, sameSite: "lax", httpOnly: true});
             req.session.tokenSet = tokens;
 
             const user = await client.userinfo(tokens.access_token!!, {via: "header"});
