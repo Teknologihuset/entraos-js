@@ -123,7 +123,7 @@ EntraClient.getOidcClient().then(client => {
         const params = client.callbackParams(req);
         const code_verifier = req.session.sessionData?.code_verifier;
         const state = req.session.sessionData?.state;
-        const nonce = req.session.sessionData?.nonce;
+        const nonceSession = req.session.sessionData?.nonce;
 
         if (!code_verifier) {
             throw new Error("missing code_verifier");
@@ -133,11 +133,6 @@ EntraClient.getOidcClient().then(client => {
             console.error("ERROR: Invalid state.");
             return res.redirect("/");
         }
-
-        /*if (!nonce || nonce !== params.nonce) {
-            console.error("ERROR: Invalid nonce.");
-            return res.redirect("/");
-        }*/
 
         if (params.error || params.error_description) {
             console.error("ERROR: params.error: ", params.error_description || params.error);
@@ -184,17 +179,36 @@ EntraClient.getOidcClient().then(client => {
             res.cookie("access_token", tokens.access_token, {signed: true, secure: true, sameSite: "lax", httpOnly: true});
             req.session.tokenSet = tokens;
 
-            const user = await client.userinfo(tokens.access_token!!, {via: "header"});
-            if (user) {
-                req.session.user = user;
-                console.log("USER: ", user);
+            if (tokens.access_token) {
+                const decode = (str: string):string => Buffer.from(str, 'base64').toString('binary');
+                const tokenParts: string[] = tokens.access_token.split(".");
+
+                if (tokenParts && tokenParts.length > 0) {
+                    const payload: Payload = JSON.parse(decode(tokenParts[1]));
+                    if (nonceSession !== payload["nonce"]) {
+                        return res.status(401).send("Error: invalid nonce.");
+                    }
+                }
+
+                const user = await client.userinfo(tokens.access_token, {via: "header"});
+                if (user) {
+                    req.session.user = user;
+                    console.log("USER: ", user);
+                    return res.json(user);
+                } else {
+                    return res.status(401).send("Error: no user object.");
+                }
+            } else {
+                return res.status(401).send("Error: no access token.");
             }
 
-            return res.json(user);
+
         }
-
-
     });
+
+    interface Payload {
+        nonce: string
+    }
 
     function isAuthenticated(redirectTo?: string): RequestHandler {
         return (req: Request, res: Response, next: NextFunction) => {
